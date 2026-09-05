@@ -21,17 +21,81 @@ const API_KEYS = new Set([
 ]);
 
 // ======================================================
+// DISCORD WEBHOOK
+// ======================================================
+
+const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+
+// ======================================================
 // DATA
 // ======================================================
 
-// Последний heartbeat клиента
+// Активные пользователи скрипта
+//
+// userId = {
+//     username: "...",
+//     lastSeen: 123456789
+// }
+
 const users = {};
 
 // Текст/команда, ожидающая получения конкретным клиентом
 const commands = {};
 
+// ======================================================
+// HELPERS
+// ======================================================
+
 function validKey(key) {
     return API_KEYS.has(key);
+}
+
+function getOnlineUsers() {
+    const now = Date.now();
+
+    for (const id in users) {
+        if (now - users[id].lastSeen > 30000) {
+            delete users[id];
+        }
+    }
+
+    return users;
+}
+
+function getOnlineCount() {
+    return Object.keys(getOnlineUsers()).length;
+}
+
+async function sendWebhook(content) {
+    if (!WEBHOOK_URL) {
+        console.log("DISCORD_WEBHOOK_URL is not configured");
+        return;
+    }
+
+    try {
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                username: "Script Online",
+                content: content
+            })
+        });
+
+        if (!response.ok) {
+            console.error(
+                "Webhook returned:",
+                response.status,
+                await response.text()
+            );
+        }
+    } catch (error) {
+        console.error("Webhook error:", error);
+    }
 }
 
 // ======================================================
@@ -84,6 +148,7 @@ function page(content, title = "Сайт") {
 </head>
 
 <body>
+
     ${content}
 
     <script>
@@ -106,6 +171,7 @@ function page(content, title = "Сайт") {
             i = (i + 1) % titles.length;
         }, 200);
     </script>
+
 </body>
 </html>
     `;
@@ -128,54 +194,121 @@ app.get("/", (req, res) => {
 });
 
 // ======================================================
-// HEARTBEAT
+// SCRIPT PRESENCE
+//
+// join:
+// /presence?key=KEY-123&action=join&userId=123&username=Player
+//
+// heartbeat:
+// /presence?key=KEY-123&action=heartbeat&userId=123&username=Player
+//
+// leave:
+// /presence?key=KEY-123&action=leave&userId=123&username=Player
 // ======================================================
 
-app.get("/ping", (req, res) => {
+app.get("/presence", async (req, res) => {
     const key = req.query.key;
-    const user = req.query.user;
+    const action = req.query.action;
+    const userId = req.query.userId;
+    const username = req.query.username;
 
     if (!validKey(key)) {
-        return res
-            .status(403)
-            .send("Invalid API Key or PASOL NAHUI UEBAK");
+        return res.status(403).send("Invalid API Key");
     }
 
-    if (!user) {
-        return res
-            .status(400)
-            .send("Missing user or PASOL NAHUI UEBAK");
+    if (!userId) {
+        return res.status(400).send("Missing userId");
     }
 
-    users[user] = Date.now();
+    if (!username) {
+        return res.status(400).send("Missing username");
+    }
 
-    res.send("pasol nahui at suda");
-});
+    const id = String(userId);
+    const name = String(username);
 
-// ======================================================
-// ONLINE COUNT
-// ======================================================
+    // ==================================================
+    // JOIN
+    // ==================================================
 
-app.get("/online", (req, res) => {
-    const now = Date.now();
+    if (action === "join") {
+        const alreadyOnline = users[id] !== undefined;
 
-    let online = 0;
+        users[id] = {
+            username: name,
+            lastSeen: Date.now()
+        };
 
-    for (const id in users) {
-        if (now - users[id] < 30000) {
-            online++;
+        const online = getOnlineCount();
+
+        // Отправляем webhook только при новом входе
+        if (!alreadyOnline) {
+            await sendWebhook(
+                `🟢 **Игрок запустил скрипт**\n\n` +
+                `**Username:** ${name}\n` +
+                `**UserId:** ${id}\n` +
+                `**Сейчас онлайн:** ${online}`
+            );
         }
+
+        return res.json({
+            success: true,
+            action: "join",
+            online: online
+        });
     }
 
-    res.json({
-        online
-    });
+    // ==================================================
+    // HEARTBEAT
+    // ==================================================
+
+    if (action === "heartbeat") {
+        users[id] = {
+            username: name,
+            lastSeen: Date.now()
+        };
+
+        return res.json({
+            success: true,
+            online: getOnlineCount()
+        });
+    }
+
+    // ==================================================
+    // LEAVE
+    // ==================================================
+
+    if (action === "leave") {
+        const existed = users[id] !== undefined;
+
+        delete users[id];
+
+        const online = getOnlineCount();
+
+        // Отправляем webhook только если пользователь
+        // действительно был в списке
+        if (existed) {
+            await sendWebhook(
+                `🔴 **Игрок вышел**\n\n` +
+                `**Username:** ${name}\n` +
+                `**UserId:** ${id}\n` +
+                `**Сейчас онлайн:** ${online}`
+            );
+        }
+
+        return res.json({
+            success: true,
+            action: "leave",
+            online: online
+        });
+    }
+
+    return res.status(400).send("Invalid action");
 });
 
 // ======================================================
-// CREATE COMMAND FROM API
+// COMMAND
 //
-// Example:
 // /command?key=KEY-123&user=123456&text=Hello
 // ======================================================
 
@@ -209,9 +342,8 @@ app.get("/command", (req, res) => {
 });
 
 // ======================================================
-// GET COMMAND FOR CLIENT
+// GET COMMAND
 //
-// Example:
 // /get?key=KEY-123&user=123456
 // ======================================================
 
@@ -230,14 +362,12 @@ app.get("/get", (req, res) => {
     const id = String(user);
     const command = commands[id];
 
-    // Ничего нет
     if (!command) {
         return res.json({
             text: null
         });
     }
 
-    // Забираем команду и удаляем её из очереди
     delete commands[id];
 
     res.json({
@@ -249,21 +379,45 @@ app.get("/get", (req, res) => {
 // CLEANUP
 // ======================================================
 
-setInterval(() => {
+setInterval(async () => {
     const now = Date.now();
 
+    // ==============================================
+    // Удаляем пользователей, которые не отправляли
+    // heartbeat больше 30 секунд
+    // ==============================================
+
     for (const id in users) {
-        if (now - users[id] > 60000) {
+        const user = users[id];
+
+        if (now - user.lastSeen > 30000) {
+            const username = user.username;
+
             delete users[id];
+
+            const online = getOnlineCount();
+
+            await sendWebhook(
+                `🔴 **Игрок отключился**\n\n` +
+                `**Username:** ${username}\n` +
+                `**UserId:** ${id}\n` +
+                `**Причина:** heartbeat timeout\n` +
+                `**Сейчас онлайн:** ${online}`
+            );
         }
     }
+
+    // ==============================================
+    // Удаляем старые команды
+    // ==============================================
 
     for (const id in commands) {
         if (now - commands[id].created > 300000) {
             delete commands[id];
         }
     }
-}, 30000);
+
+}, 10000);
 
 // ======================================================
 // DISCORD BOT
@@ -299,12 +453,14 @@ async function registerDiscordCommands() {
     const command = new SlashCommandBuilder()
         .setName("command")
         .setDescription("Передать текст клиенту")
+
         .addStringOption(option =>
             option
                 .setName("id")
                 .setDescription("ID игрока")
                 .setRequired(true)
         )
+
         .addStringOption(option =>
             option
                 .setName("text")
@@ -322,7 +478,9 @@ async function registerDiscordCommands() {
             DISCORD_GUILD_ID
         ),
         {
-            body: [command.toJSON()]
+            body: [
+                command.toJSON()
+            ]
         }
     );
 
@@ -360,27 +518,33 @@ discord.on("interactionCreate", async interaction => {
 });
 
 // ======================================================
-// START
+// START HTTP SERVER
 // ======================================================
 
 app.listen(PORT, () => {
     console.log(`HTTP server started on port ${PORT}`);
 });
 
+// ======================================================
+// START DISCORD
+// ======================================================
+
 async function startDiscord() {
+    if (!DISCORD_TOKEN) {
+        console.error("DISCORD_TOKEN is missing");
+        return;
+    }
+
     await discord.login(DISCORD_TOKEN);
 
-    console.log(`Discord bot logged in as ${discord.user.tag}`);
+    console.log(
+        `Discord bot logged in as ${discord.user.tag}`
+    );
 
     await registerDiscordCommands();
 
     console.log("Discord /command registered");
 }
-
-startDiscord().catch(error => {
-    console.error("Discord startup error:");
-    console.error(error);
-});
 
 startDiscord().catch(error => {
     console.error("Discord startup error:");
