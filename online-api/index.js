@@ -368,11 +368,19 @@ app.listen(PORT, () => {
 });
 
 async function startDiscord() {
-    await registerDiscordCommands();
     await discord.login(DISCORD_TOKEN);
 
     console.log(`Discord bot logged in as ${discord.user.tag}`);
+
+    await registerDiscordCommands();
+
+    console.log("Discord /command registered");
 }
+
+startDiscord().catch(error => {
+    console.error("Discord startup error:");
+    console.error(error);
+});
 
 startDiscord().catch(error => {
     console.error("Discord startup error:");
