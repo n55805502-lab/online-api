@@ -269,9 +269,9 @@ setInterval(() => {
 // DISCORD BOT
 // ======================================================
 
-const DISCORD_TOKEN = MTU0NTgyNTc3OTkyODAxMDc3Mg.G4Cm1Y.Ly2xcQH14-PvU99fNSiatCbtnA64CFI43JdRLs;
-const DISCORD_CLIENT_ID = 1545825779928010772;
-const DISCORD_GUILD_ID = 1545826564409790474;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const DISCORD_CLIENT_ID = "1545825779928010772";
+const DISCORD_GUILD_ID = "1545826564409790474";
 
 const discord = new Client({
     intents: [
