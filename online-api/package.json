@@ -1,12 +1,13 @@
 {
-  "name": "online-api",
+  "name": "roblox-online-api",
   "version": "1.0.0",
+  "description": "Roblox script online API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.25.1",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "discord.js": "^14.24.0"
   }
 }
