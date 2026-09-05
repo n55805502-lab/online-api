@@ -1,18 +1,42 @@
 const express = require("express");
+const {
+    Client,
+    GatewayIntentBits,
+    REST,
+    Routes,
+    SlashCommandBuilder
+} = require("discord.js");
+
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+
+// ======================================================
+// API KEYS
+// ======================================================
 
 const API_KEYS = new Set([
     "KEY-123",
     "KEY-456"
 ]);
 
+// ======================================================
+// DATA
+// ======================================================
+
+// Последний heartbeat клиента
 const users = {};
+
+// Текст/команда, ожидающая получения конкретным клиентом
+const commands = {};
 
 function validKey(key) {
     return API_KEYS.has(key);
 }
+
+// ======================================================
+// HTML
+// ======================================================
 
 function page(content, title = "Сайт") {
     return `
@@ -87,21 +111,25 @@ function page(content, title = "Сайт") {
     `;
 }
 
+// ======================================================
+// MAIN PAGE
+// ======================================================
+
 app.get("/", (req, res) => {
     res.send(page(`
         <h1>IDI NAHUI</h1>
 
         <p>idi!</p>
 
-        <p>
-            nahui
-        </p>
+        <p>nahui</p>
 
-        <p>
-            idi nahui
-        </p>
+        <p>idi nahui</p>
     `, "^_____^"));
 });
+
+// ======================================================
+// HEARTBEAT
+// ======================================================
 
 app.get("/ping", (req, res) => {
     const key = req.query.key;
@@ -124,6 +152,10 @@ app.get("/ping", (req, res) => {
     res.send("pasol nahui at suda");
 });
 
+// ======================================================
+// ONLINE COUNT
+// ======================================================
+
 app.get("/online", (req, res) => {
     const now = Date.now();
 
@@ -140,6 +172,83 @@ app.get("/online", (req, res) => {
     });
 });
 
+// ======================================================
+// CREATE COMMAND FROM API
+//
+// Example:
+// /command?key=KEY-123&user=123456&text=Hello
+// ======================================================
+
+app.get("/command", (req, res) => {
+    const key = req.query.key;
+    const user = req.query.user;
+    const text = req.query.text;
+
+    if (!validKey(key)) {
+        return res.status(403).send("Invalid API Key");
+    }
+
+    if (!user) {
+        return res.status(400).send("Missing user");
+    }
+
+    if (text === undefined) {
+        return res.status(400).send("Missing text");
+    }
+
+    commands[String(user)] = {
+        text: String(text),
+        created: Date.now()
+    };
+
+    res.json({
+        success: true,
+        user: String(user),
+        text: String(text)
+    });
+});
+
+// ======================================================
+// GET COMMAND FOR CLIENT
+//
+// Example:
+// /get?key=KEY-123&user=123456
+// ======================================================
+
+app.get("/get", (req, res) => {
+    const key = req.query.key;
+    const user = req.query.user;
+
+    if (!validKey(key)) {
+        return res.status(403).send("Invalid API Key");
+    }
+
+    if (!user) {
+        return res.status(400).send("Missing user");
+    }
+
+    const id = String(user);
+    const command = commands[id];
+
+    // Ничего нет
+    if (!command) {
+        return res.json({
+            text: null
+        });
+    }
+
+    // Забираем команду и удаляем её из очереди
+    delete commands[id];
+
+    res.json({
+        text: command.text
+    });
+});
+
+// ======================================================
+// CLEANUP
+// ======================================================
+
 setInterval(() => {
     const now = Date.now();
 
@@ -148,8 +257,124 @@ setInterval(() => {
             delete users[id];
         }
     }
+
+    for (const id in commands) {
+        if (now - commands[id].created > 300000) {
+            delete commands[id];
+        }
+    }
 }, 30000);
 
+// ======================================================
+// DISCORD BOT
+// ======================================================
+
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
+
+const discord = new Client({
+    intents: [
+        GatewayIntentBits.Guilds
+    ]
+});
+
+// ======================================================
+// REGISTER /COMMAND
+// ======================================================
+
+async function registerDiscordCommands() {
+    if (!DISCORD_TOKEN) {
+        throw new Error("Missing DISCORD_TOKEN");
+    }
+
+    if (!DISCORD_CLIENT_ID) {
+        throw new Error("Missing DISCORD_CLIENT_ID");
+    }
+
+    if (!DISCORD_GUILD_ID) {
+        throw new Error("Missing DISCORD_GUILD_ID");
+    }
+
+    const command = new SlashCommandBuilder()
+        .setName("command")
+        .setDescription("Передать текст клиенту")
+        .addStringOption(option =>
+            option
+                .setName("id")
+                .setDescription("ID игрока")
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option
+                .setName("text")
+                .setDescription("Текст")
+                .setRequired(true)
+        );
+
+    const rest = new REST({
+        version: "10"
+    }).setToken(DISCORD_TOKEN);
+
+    await rest.put(
+        Routes.applicationGuildCommands(
+            DISCORD_CLIENT_ID,
+            DISCORD_GUILD_ID
+        ),
+        {
+            body: [command.toJSON()]
+        }
+    );
+
+    console.log("Discord /command registered");
+}
+
+// ======================================================
+// DISCORD INTERACTIONS
+// ======================================================
+
+discord.on("interactionCreate", async interaction => {
+    if (!interaction.isChatInputCommand()) {
+        return;
+    }
+
+    if (interaction.commandName !== "command") {
+        return;
+    }
+
+    const id = interaction.options.getString("id");
+    const text = interaction.options.getString("text");
+
+    commands[String(id)] = {
+        text: String(text),
+        created: Date.now()
+    };
+
+    console.log(`[DISCORD] ${id}: ${text}`);
+
+    await interaction.reply({
+        content:
+            `✅ Текст отправлен в очередь для клиента **${id}**\n` +
+            `Текст: \`${text}\``
+    });
+});
+
+// ======================================================
+// START
+// ======================================================
+
 app.listen(PORT, () => {
-    console.log("karose pusk w robotait");
+    console.log(`HTTP server started on port ${PORT}`);
+});
+
+async function startDiscord() {
+    await registerDiscordCommands();
+    await discord.login(DISCORD_TOKEN);
+
+    console.log(`Discord bot logged in as ${discord.user.tag}`);
+}
+
+startDiscord().catch(error => {
+    console.error("Discord startup error:");
+    console.error(error);
 });
