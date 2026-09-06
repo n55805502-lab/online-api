@@ -33,6 +33,7 @@ const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 // Активные пользователи скрипта
 //
 // userId = {
+//     userId: "...",
 //     username: "...",
 //     lastSeen: 123456789
 // }
@@ -64,6 +65,18 @@ function getOnlineUsers() {
 
 function getOnlineCount() {
     return Object.keys(getOnlineUsers()).length;
+}
+
+function getOnlineList() {
+    const onlineUsers = Object.values(getOnlineUsers());
+
+    if (onlineUsers.length === 0) {
+        return "Никого нет";
+    }
+
+    return onlineUsers
+        .map(user => `${user.username} — ${user.userId}`)
+        .join("\n");
 }
 
 async function sendWebhook(content) {
@@ -235,6 +248,7 @@ app.get("/presence", async (req, res) => {
         const alreadyOnline = users[id] !== undefined;
 
         users[id] = {
+            userId: id,
             username: name,
             lastSeen: Date.now()
         };
@@ -243,18 +257,26 @@ app.get("/presence", async (req, res) => {
 
         // Отправляем webhook только при новом входе
         if (!alreadyOnline) {
+            const onlineList = getOnlineList();
+
             await sendWebhook(
                 `🟢 **Игрок запустил скрипт**\n\n` +
-                `**Username:** ${name}\n` +
-                `**UserId:** ${id}\n` +
-                `**Сейчас онлайн:** ${online}`
+                `**Ник:** ${name}\n` +
+                `**ID:** ${id}\n` +
+                `**Сейчас онлайн:** ${online}\n\n` +
+                `👥 **Кто ещё в сети:**\n` +
+                `${onlineList}`
             );
         }
 
         return res.json({
             success: true,
             action: "join",
-            online: online
+            online: online,
+            users: Object.values(getOnlineUsers()).map(user => ({
+                username: user.username,
+                userId: user.userId
+            }))
         });
     }
 
@@ -264,6 +286,7 @@ app.get("/presence", async (req, res) => {
 
     if (action === "heartbeat") {
         users[id] = {
+            userId: id,
             username: name,
             lastSeen: Date.now()
         };
@@ -288,11 +311,15 @@ app.get("/presence", async (req, res) => {
         // Отправляем webhook только если пользователь
         // действительно был в списке
         if (existed) {
+            const onlineList = getOnlineList();
+
             await sendWebhook(
                 `🔴 **Игрок вышел**\n\n` +
-                `**Username:** ${name}\n` +
-                `**UserId:** ${id}\n` +
-                `**Сейчас онлайн:** ${online}`
+                `**Ник:** ${name}\n` +
+                `**ID:** ${id}\n` +
+                `**Сейчас онлайн:** ${online}\n\n` +
+                `👥 **Кто остался в сети:**\n` +
+                `${onlineList}`
             );
         }
 
@@ -396,13 +423,16 @@ setInterval(async () => {
             delete users[id];
 
             const online = getOnlineCount();
+            const onlineList = getOnlineList();
 
             await sendWebhook(
                 `🔴 **Игрок отключился**\n\n` +
-                `**Username:** ${username}\n` +
-                `**UserId:** ${id}\n` +
+                `**Ник:** ${username}\n` +
+                `**ID:** ${id}\n` +
                 `**Причина:** heartbeat timeout\n` +
-                `**Сейчас онлайн:** ${online}`
+                `**Сейчас онлайн:** ${online}\n\n` +
+                `👥 **Кто остался в сети:**\n` +
+                `${onlineList}`
             );
         }
     }
