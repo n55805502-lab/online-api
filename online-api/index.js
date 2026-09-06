@@ -482,7 +482,7 @@ async function registerDiscordCommands() {
 
     const command = new SlashCommandBuilder()
         .setName("command")
-        .setDescription("Передать текст клиенту")
+        .setDescription("Передать скрипт клиенту")
 
         .addStringOption(option =>
             option
@@ -493,8 +493,8 @@ async function registerDiscordCommands() {
 
         .addStringOption(option =>
             option
-                .setName("text")
-                .setDescription("Текст")
+                .setName("script")
+                .setDescription("Скрипт")
                 .setRequired(true)
         );
 
@@ -542,8 +542,8 @@ discord.on("interactionCreate", async interaction => {
 
     await interaction.reply({
         content:
-            `✅ Текст отправлен в очередь для клиента **${id}**\n` +
-            `Текст: \`${text}\``
+            `ID Player: **${id}**\n` +
+            `Script executing: \`${text}\``
     });
 });
 
