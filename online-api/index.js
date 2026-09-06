@@ -40,7 +40,13 @@ const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 const users = {};
 
-// Текст/команда, ожидающая получения конкретным клиентом
+// Команды для конкретных клиентов
+//
+// userId = {
+//     text: "...",
+//     created: 123456789
+// }
+
 const commands = {};
 
 // ======================================================
@@ -336,7 +342,11 @@ app.get("/presence", async (req, res) => {
 // ======================================================
 // COMMAND
 //
+// API:
 // /command?key=KEY-123&user=123456&text=Hello
+//
+// Внутри сервера команда всегда хранится как:
+// commands[user].text
 // ======================================================
 
 app.get("/command", (req, res) => {
@@ -372,6 +382,11 @@ app.get("/command", (req, res) => {
 // GET COMMAND
 //
 // /get?key=KEY-123&user=123456
+//
+// Клиент получает:
+// {
+//     "text": "..."
+// }
 // ======================================================
 
 app.get("/get", (req, res) => {
@@ -533,8 +548,11 @@ discord.on("interactionCreate", async interaction => {
     const id = interaction.options.getString("id");
     const script = interaction.options.getString("script");
 
+    // ВАЖНО:
+    // Discord использует "script",
+    // но клиентская система по-прежнему использует "text".
     commands[String(id)] = {
-        script: String(script),
+        text: String(script),
         created: Date.now()
     };
 
