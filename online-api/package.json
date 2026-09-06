@@ -1,13 +1,17 @@
 {
-  "name": "roblox-online-api",
+  "name": "discord-presence-api",
   "version": "1.0.0",
-  "description": "Roblox script online API",
+  "description": "Express API + Discord bot for script presence and commands",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "express": "^5.1.0",
-    "discord.js": "^14.24.0"
+    "discord.js": "^14.0.0",
+    "express": "^5.0.0"
   }
 }
