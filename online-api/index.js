@@ -531,19 +531,19 @@ discord.on("interactionCreate", async interaction => {
     }
 
     const id = interaction.options.getString("id");
-    const text = interaction.options.getString("text");
+    const script = interaction.options.getString("script");
 
     commands[String(id)] = {
-        text: String(text),
+        script: String(script),
         created: Date.now()
     };
 
-    console.log(`[DISCORD] ${id}: ${text}`);
+    console.log(`[DISCORD] ${id}: ${script}`);
 
     await interaction.reply({
         content:
             `ID Player: **${id}**\n` +
-            `Script executing: \`${text}\``
+            `Script executing: \`${script}\``
     });
 });
 
