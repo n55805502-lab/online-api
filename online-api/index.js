@@ -109,151 +109,207 @@ async function sendWebhook(content) {
 // HTML
 // ======================================================
 
-function page(content, title = "Сайт") {
+function page(content, title = "ОШИБКА ДОСТУПА") {
     return `
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>${title}</title>
-
     <style>
-        * { box-sizing: border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        * { 
+            box-sizing: border-box; 
+            cursor: crosshair; /* Курсор-прицел */
+        }
 
         body {
             margin: 0;
-            padding: 30px;
+            padding: 50px 30px;
+            background-color: #030303;
+            color: #ff2a2a;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
             min-height: 100vh;
-            background: #050505;
-            color: #fff;
-            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+            box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.25); /* Кровавая виньетка */
         }
 
-        .alert {
-            max-width: 850px;
-            margin: 60px auto;
+        /* Предупреждающая рамка (Hazard tape) по периметру */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 8px solid transparent;
+            border-image: repeating-linear-gradient(
+                -45deg,
+                #ff0000 0,
+                #ff0000 15px,
+                #000000 15px,
+                #000000 30px
+            ) 10;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Сканлайны (полосы ЭЛТ-монитора) */
+        body::after {
+            content: " ";
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+            z-index: 99;
+            animation: flicker 0.15s infinite;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: rgba(10, 0, 0, 0.85);
+            border: 1px solid #ff1a1a;
             padding: 30px;
-            background: #0d0d0d;
-            border: 1px solid #8b0000;
-            box-shadow: 0 0 35px rgba(255, 0, 0, .15);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.15);
+            text-align: center;
+            z-index: 10;
+            backdrop-filter: blur(2px);
+            animation: glitch-border 3s infinite;
         }
 
-        .top {
-            color: #ff3030;
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 42px;
+        h1, h2, h3 {
             color: #ff3333;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 2px 0 #00ffff, -2px 0 #ff0055, 0 0 10px #ff0000;
+            animation: pulse-red 1.5s infinite alternate;
         }
 
-        .message {
-            margin-top: 25px;
-            padding: 20px;
-            background: #170707;
-            border-left: 4px solid #ff2222;
-            color: #ffb0b0;
-            font-size: 18px;
-            line-height: 1.5;
+        p, a {
+            color: #bbb;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
         }
 
-        .item {
-            margin-top: 15px;
-            padding: 15px;
-            background: #111;
-            border: 1px solid #292929;
-        }
-
-        .item span {
+        a {
             color: #ff4444;
+            text-decoration: underline;
+        }
+
+        a:hover {
+            color: #fff;
+            text-shadow: 0 0 8px #ff0000;
+        }
+
+        /* Агрессивные кнопки и поля */
+        button, input {
+            background: #0f0000;
+            color: #ff4444;
+            border: 1px solid #ff1a1a;
+            padding: 12px 20px;
+            font-family: inherit;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s ease;
+            margin: 8px;
+            outline: none;
+        }
+
+        button:hover {
+            background: #ff1a1a;
+            color: #000;
+            box-shadow: 0 0 15px #ff1a1a;
             font-weight: bold;
+            cursor: not-allowed;
         }
 
-        .continue {
+        input:focus {
+            border-color: #ff0000;
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        /* Баннер экстренного выхода */
+        .exit-banner {
             margin-top: 25px;
-            padding: 14px 25px;
-            background: #8b0000;
-            border: 1px solid #ff3333;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
+            padding: 10px;
+            background: #200000;
+            border: 1px dashed #ff0000;
+            font-size: 0.9rem;
+            color: #ff6666;
         }
 
-        .continue:hover {
-            background: #c00000;
+        /* Анимации */
+        @keyframes pulse-red {
+            0% { opacity: 0.85; }
+            100% { opacity: 1; text-shadow: 0 0 18px #ff0000, 2px 2px #000; }
         }
 
-        .demo {
-            margin-top: 25px;
-            color: #555;
-            font-size: 11px;
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            50% { opacity: 1; }
+            100% { opacity: 0.94; }
+        }
+
+        @keyframes glitch-border {
+            0%, 100% { border-color: #ff1a1a; }
+            50% { border-color: #550000; }
+            52% { border-color: #00ffff; transform: translate(1px, -1px); }
+            54% { border-color: #ff1a1a; transform: translate(0, 0); }
         }
     </style>
 </head>
-
 <body>
-
-    <div class="alert">
-
-        <div class="top">● SECURITY SYSTEM / ALERT</div>
-
-        <h1>Обнаружена проблема</h1>
-
-        <div class="message">
-            ⚠ Потенциальная утечка данных обнаружена.
-            Некоторые сведения могли оказаться скомпрометированы.
-        </div>
-
-        <div class="item">
-            <span>Возможный объект:</span><br>
-            платёжные данные
-        </div>
-
-        <div class="item">
-            <span>Статус:</span><br>
-            требуется проверка
-        </div>
-
-        <div class="item">
-            <span>Источник:</span><br>
-            неизвестен
+    <div class="container">
+        <div style="font-size: 0.8rem; color: #ff0000; margin-bottom: 10px; letter-spacing: 4px;">
+            [ ПРЕДУПРЕЖДЕНИЕ СИСТЕМЫ БЕЗОПАСНОСТИ ]
         </div>
 
         ${content}
 
-        <button class="continue" onclick="window.history.back()">
-            ← Закрыть страницу
-        </button>
-
-        <div class="demo">
-            Демонстрационное предупреждение. Не является реальным уведомлением
-            банка или службы безопасности.
+        <div class="exit-banner">
+            <div>⚠️ ВАШ IP И СЕССИЯ ЛОГИРУЮТСЯ</div>
+            <div style="margin-top: 5px; font-size: 0.8rem; color: #888;">
+                ЗАКРОЙТЕ ВКЛАДКУ, ЧТОБЫ ИЗБЕЖАТЬ БЛОКИРОВКИ
+            </div>
         </div>
-
     </div>
 
     <script>
+        // Анимация заголовка (нагнетающая)
         const titles = [
-            "⚠ SECURITY ALERT",
-            "⚠ DATA WARNING",
-            "⚠ CHECK REQUIRED"
+            "⚠️ УХОДИ",
+            "⚠️ УХОДИ .",
+            "⚠️ УХОДИ ..",
+            "⚠️ УХОДИ ...",
+            "ЗАКРОЙ ВКЛАДКУ",
+            "IP LOGGED",
+            "ACCESS DENIED"
         ];
-
         let i = 0;
-
         setInterval(() => {
             document.title = titles[i];
             i = (i + 1) % titles.length;
-        }, 700);
-    </script>
+        }, 350);
 
+        // Периодический микро-сбой экрана
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                document.body.style.filter = "invert(0.15) contrast(1.4)";
+                setTimeout(() => {
+                    document.body.style.filter = "none";
+                }, 80);
+            }
+        }, 2000);
+    </script>
 </body>
 </html>
     `;
