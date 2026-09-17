@@ -502,28 +502,23 @@ setInterval(async () => {
     const now = Date.now();
 
     // 1. Проверяем таймаут игроков
-    for (const id in users) {
-        const user = users[id];
-
-        if (now - user.lastSeen > 5000) {
-            const username = user.username;
-
-            // Удаляем пользователя
-            delete users[id];
-
-            const online = getOnlineCount();
-            const onlineList = getOnlineList();
-
-            await sendWebhook(
-                `🔴 **Игрок отключился**\n\n` +
-                `**Ник:** ${username}\n` +
-                `**ID:** ${id}\n` +
-                `**Причина:** heartbeat timeout (>5s)\n` +
-                `**Сейчас онлайн:** ${online}\n\n` +
-                `👥 **Кто остался в сети:**\n` +
-                `${onlineList}`
-            );
-        }
+    if (now - user.lastSeen > 10000) {
+        const username = user.username;
+    
+        delete users[id];
+    
+        const online = getOnlineCount();
+        const onlineList = getOnlineList();
+    
+        await sendWebhook(
+            `🔴 **Игрок отключился**\n\n` +
+            `**Ник:** ${username}\n` +
+            `**ID:** ${id}\n` +
+            `**Причина:** heartbeat timeout (>10s)\n` +
+            `**Сейчас онлайн:** ${online}\n\n` +
+            `👥 **Кто остался в сети:**\n` +
+            `${onlineList}`
+        );
     }
 
     // 2. Удаляем старые команды (старше 5 минут)
