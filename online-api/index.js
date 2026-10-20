@@ -275,7 +275,7 @@ setInterval(async () => {
 
     for (const id in users) {
         const user = users[id];
-        if (now - user.lastSeen > 10000) {
+        if (now - user.lastSeen >= 20000) {
             delete users[id];
             await sendWebhook(
                 `🔴 **Игрок отключился**\n\n` +
