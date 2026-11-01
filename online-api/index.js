@@ -301,7 +301,7 @@ setInterval(async () => {
 
     for (const id in users) {
         const user = users[id];
-        if (now - user.lastSeen >= 20000) {
+        if (now - user.lastSeen >= 5000) {
             delete users[id];
             await sendWebhook(
                 `🔴 **Игрок отключился**\n\n` +
@@ -422,3 +422,6 @@ async function startDiscord() {
 startDiscord().catch(error => {
     console.error("Discord startup error:", error);
 });
+
+
+console.log("😏🦶")
