@@ -24,6 +24,27 @@ const API_KEYS = new Set([
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 // ======================================================
+// 67 pokoe ii najkn;fjklns/dhjl;fg
+// ======================================================
+
+const REER_URL = process.env.GIT_REER_URL;
+
+async function isReerEnabled() {
+    try {
+        const response = await fetch(`${REER_URL}?t=${Date.now()}`, {
+            cache: "no-store"
+        });
+
+        if (!response.ok) return false;
+
+        return (await response.text()).trim().toLowerCase() === "true";
+    } catch (error) {
+        console.error("[REER] Failed to check:", error);
+        return false;
+    }
+}
+
+// ======================================================
 // DATA
 // ======================================================
 // users[id] = { userId, username, lastSeen }
@@ -68,6 +89,11 @@ function getOnlineList() {
 async function sendWebhook(content) {
     if (!WEBHOOK_URL) {
         console.log("DISCORD_WEBHOOK_URL is not configured");
+        return;
+    }
+
+    if (!(await isReerEnabled())) {
+        console.log("[REER] Discord notifications disabled");
         return;
     }
 
